@@ -1,0 +1,68 @@
+name: Build Android Release
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Setup Capacitor Config
+        run: |
+          npx cap init "Image Compressor & Resizer in KB" com.brivaltop.imagecompressor.resizer.mbtokb --web-dir dist
+
+      - name: Inject AdMob Meta & Permissions
+        run: |
+          mkdir -p android/app/src/main
+          cat <<EOF > android/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:allowBackup="true"
+                  android:label="Image Compressor &amp; Resizer in KB"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.DeviceDefault">
+                  <meta-data
+                      android:name="com.google.android.gms.ads.APPLICATION_ID"
+                      android:value="ca-app-pub-6956987079427706~5609210977"/>
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Add Android & Copy
+        run: |
+          npx cap add android
+          npx cap copy
+
+      - name: Build Unsigned AAB
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
