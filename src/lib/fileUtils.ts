@@ -13,6 +13,22 @@ export async function downloadBlob(blob: Blob, filename: string): Promise<string
 }
 
 export async function shareOrDownload(blob: Blob, filename: string): Promise<string> {
+  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+
+  // 1. Pehle Mobile Phone ka Native Share / Save Menu try karein
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: filename,
+      });
+      return 'shared';
+    } catch (e) {
+      // User ne share cancel kiya toh neeche fallback modal chalega
+    }
+  }
+
+  // 2. Fallback Modal (Agar Web Share support na ho)
   return new Promise((resolve) => {
     const blobUrl = URL.createObjectURL(blob);
 
@@ -32,12 +48,12 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
     img.style.cssText = 'max-width: 90%; max-height: 45vh; border-radius: 8px; border: 2px solid #334155; object-fit: contain; -webkit-touch-callout: default !important; -webkit-user-select: auto !important; user-select: auto !important;';
 
     const saveBtn = document.createElement('button');
-    saveBtn.innerText = '📥 Save Image To Phone';
+    saveBtn.innerText = '👁️ Open Image in New Tab';
     saveBtn.style.cssText = 'margin-top: 20px; padding: 14px 28px; background: #22c55e; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; text-align: center; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); width: 80%; max-width: 280px; cursor: pointer;';
 
     const note = document.createElement('p');
-    note.innerText = 'Button se download na ho toh photo par long-press karke "Save image" karein.';
-    note.style.cssText = 'color: #94a3b8; font-size: 12px; margin-top: 12px; text-align: center; width: 90%;';
+    note.innerText = '📌 Photo par ungli daba kar rakhein (Long-Press) aur "Download image" par click karein.';
+    note.style.cssText = 'color: #38bdf8; font-size: 13px; margin-top: 12px; text-align: center; width: 90%; font-weight: 600;';
 
     const closeBtn = document.createElement('button');
     closeBtn.innerText = 'Close';
@@ -51,14 +67,14 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
 
     document.body.appendChild(modal);
 
-    // Programmatic Download Trigger
+    // Green button dabane se photo direct naye tab mein khul jayegi
     saveBtn.onclick = () => {
-      const tempLink = document.createElement('a');
-      tempLink.href = blobUrl;
-      tempLink.download = filename;
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
+      const newWin = window.open();
+      if (newWin) {
+        newWin.document.write(`<body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${blobUrl}" style="max-width:100%;height:auto;"/></body>`);
+      } else {
+        window.location.href = blobUrl;
+      }
     };
 
     const closeModal = () => {
