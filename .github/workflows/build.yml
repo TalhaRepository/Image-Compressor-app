@@ -23,6 +23,15 @@ jobs:
         run: |
           npx cap init "Image Compressor & Resizer in KB" com.brivaltop.imagecompressor.resizer.mbtokb --web-dir dist
 
+      - name: Build Web App
+        run: npm run build
+
+      - name: Add Android Platform & Copy
+        run: |
+          rm -rf android
+          npx cap add android
+          npx cap copy
+
       - name: Inject AdMob Meta & Permissions
         run: |
           mkdir -p android/app/src/main
@@ -49,14 +58,6 @@ jobs:
           </manifest>
           EOF
 
-      - name: Build Web App
-        run: npm run build
-
-      - name: Add Android & Copy
-        run: |
-          npx cap add android
-          npx cap copy
-
       - name: Build Unsigned AAB
         run: |
           cd android
@@ -68,3 +69,4 @@ jobs:
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
+          
