@@ -78,13 +78,19 @@ jobs:
           </manifest>
           EOF
 
-      - name: Build Unsigned AAB
+      - name: Build Both APK and AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew assembleRelease bundleRelease --no-daemon
 
-      - name: Upload Build Artifact
+      - name: Upload APK (For direct phone testing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Upload AAB (For Google Play Store)
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
