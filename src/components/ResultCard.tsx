@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CompressionResultItem } from '@/lib/types';
 import { formatBytes } from '@/lib/compress';
 import { Download, Share2, Eye, TrendingDown, Maximize2 } from 'lucide-react';
+import { downloadImageToDevice } from '@/lib/fileUtils';
 
 interface ResultCardProps {
   item: CompressionResultItem;
@@ -14,7 +15,11 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
   const baseName = item.name.replace(/\.[^.]+$/, '');
   const ext = item.resultBlob.type === 'image/webp' ? 'webp' : 'jpg';
   const downloadFileName = `${baseName}-compressed.${ext}`;
-
+const handleDownload = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+  await downloadImageToDevice(item.resultUrl || dataUrl, downloadFileName);
+};
+  
   // Convert blob to Data URL upfront so href is ready before tap
   useEffect(() => {
     let active = true;
@@ -80,14 +85,14 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
 
               {/* Pure HTML Anchor Link without parent wrapper or stopPropagation */}
               {dataUrl ? (
-                <a
-                  href={dataUrl}
-                  download={downloadFileName}
-                  className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors inline-flex items-center justify-center"
-                  title="Download"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </a>
+                <button
+  onClick={handleDownload}
+  className="p-1.5 rounded-lg bg-teal-700/60"
+  title="Download"
+>
+  <Download className="w-3.5 h-3.5" />
+</button>
+
               ) : (
                 <div className="p-1.5 rounded-lg bg-teal-700/30 text-teal-500">
                   <Download className="w-3.5 h-3.5 animate-pulse" />
