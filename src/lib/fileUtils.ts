@@ -1,3 +1,5 @@
+import { Media } from '@capacitor-community/media';
+
 // Read a File as a data URL (for in-browser preview)
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -78,23 +80,43 @@ export function uid(): string {
 
 // Android WebView & Browser Save/Download Handler
 export async function downloadImageToDevice(input: string | Blob, fileName: string) {
-  try {
-    let blob: Blob;
+  let dataUrl = '';
+  let blob: Blob;
 
-    if (input instanceof Blob) {
-      blob = input;
-    } else if (typeof input === 'string' && input.startsWith('data:')) {
-      blob = dataUrlToBlob(input);
-    } else if (typeof input === 'string') {
+  // Prepare both DataURL and Blob formats
+  if (input instanceof Blob) {
+    blob = input;
+    dataUrl = await blobToDataUrl(input);
+  } else if (typeof input === 'string' && input.startsWith('data:')) {
+    dataUrl = input;
+    blob = dataUrlToBlob(input);
+  } else if (typeof input === 'string') {
+    dataUrl = input;
+    try {
       const res = await fetch(input);
       blob = await res.blob();
-    } else {
-      return;
+    } catch {
+      blob = new Blob([], { type: 'image/jpeg' });
     }
+  } else {
+    return;
+  }
 
+  // 1. Native Plugin direct save to Android Gallery
+  try {
+    await Media.savePhoto({
+      path: dataUrl,
+      album: 'Compressed Images'
+    });
+    alert('Image Gallery mein save ho gayi hai!');
+    return;
+  } catch (pluginErr) {
+    console.warn('Native plugin not available, using Web fallbacks', pluginErr);
+  }
+
+  // 2. Android Native Share Sheet Fallback
+  try {
     const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
-
-    // 1. Android Native Share Sheet (Save to Photos / Files / Drive)
     if (
       typeof navigator !== 'undefined' &&
       navigator.share &&
@@ -107,11 +129,11 @@ export async function downloadImageToDevice(input: string | Blob, fileName: stri
       });
       return;
     }
-
-    // 2. Direct Blob Download Fallback
-    await downloadBlob(blob, fileName);
   } catch (err) {
-    console.error('Download failed:', err);
+    // User cancelled share
   }
-  }
-               
+
+  // 3. Direct Blob Download Fallback
+  await downloadBlob(blob, fileName);
+}
+  
