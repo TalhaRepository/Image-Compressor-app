@@ -8,42 +8,35 @@ export function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export async function downloadBlob(blob: Blob, filename: string): Promise<string> {
-  return shareOrDownload(blob, filename);
+export function downloadBlob(blob: Blob, filename: string): Promise<string> {
+  return new Promise((resolve) => {
+    // Force octet-stream binary type so Android DownloadManager MUST save the file
+    const forceDownloadBlob = new Blob([blob], { type: 'application/octet-stream' });
+    const blobUrl = URL.createObjectURL(forceDownloadBlob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    
+    document.body.appendChild(link);
+    
+    // Direct synchronous trigger within user tap gesture
+    link.click();
+    
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+      resolve('downloaded');
+    }, 4000);
+  });
 }
 
 export async function shareOrDownload(blob: Blob, filename: string): Promise<string> {
-  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
-
-  // 1. Mobile Phone Native Share Sheet (Save to Gallery / Drive / Files)
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: filename,
-      });
-      return 'shared';
-    } catch (e) {
-      // User cancelled share
-    }
-  }
-
-  // 2. Direct Clean Download (Bina kisi popup / modal ke)
-  const blobUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = blobUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  setTimeout(() => {
-    URL.revokeObjectURL(blobUrl);
-  }, 2000);
-
-  return 'downloaded';
+  return downloadBlob(blob, filename);
 }
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
-}
+                     }
+                     
