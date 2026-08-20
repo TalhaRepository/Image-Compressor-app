@@ -10,22 +10,35 @@ export function fileToDataUrl(file: File): Promise<string> {
 
 // Trigger a browser download for a blob (Mobile WebView Compatible)
 export async function downloadBlob(blob: Blob, filename: string) {
-  try {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64data = reader.result as string;
-      const a = document.createElement('a');
-      a.href = base64data;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    };
-    reader.readAsDataURL(blob);
-  } catch (e) {
-    console.error('Download failed', e);
+  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+
+  // 1. Android WebView / Capacitor Ke Liye (Native Share & Save)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: filename,
+      });
+      return;
+    } catch (err) {
+      console.log('Share cancelled or failed', err);
+    }
   }
-}
+
+  // 2. Standard Web Browser Fallback
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const base64data = reader.result as string;
+    const a = document.createElement('a');
+    a.href = base64data;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+  reader.readAsDataURL(blob);
+  }
+    
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
