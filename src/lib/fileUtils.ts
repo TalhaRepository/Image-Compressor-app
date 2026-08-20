@@ -12,28 +12,36 @@ export function fileToDataUrl(file: File): Promise<string> {
 }
 
 export async function downloadBlob(blob: Blob, filename: string) {
-  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
-
-  // 1. Android Native Share
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: filename,
-      });
-      return;
-    } catch (err) {
-      console.log('Share cancelled', err);
-    }
-  }
-
-  // 2. Web Fallback
   const reader = new FileReader();
   reader.onloadend = () => {
-    const a = document.createElement('a');
-    a.href = reader.result as string;
-    a.download = filename;
-    a.click();
+    const base64data = reader.result as string;
+
+    const existingModal = document.getElementById('image-download-overlay');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'image-download-overlay';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.92); z-index: 99999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px; box-sizing: border-box;
+    `;
+
+    modal.innerHTML = `
+      <div style="position: absolute; top: 20px; right: 20px; color: #fff; font-size: 28px; cursor: pointer;" id="close-overlay">&times;</div>
+      <p style="color: #38bdf8; font-weight: bold; font-size: 15px; margin-bottom: 15px; text-align: center;">
+        Image par long-press (daba ke) rakhein aur "Save image" par click karein
+      </p>
+      <img src="${base64data}" style="max-width: 90%; max-height: 65vh; border-radius: 8px; border: 2px solid #334155; object-fit: contain;" />
+      <button id="close-btn" style="margin-top: 20px; padding: 10px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Close</button>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    document.getElementById('close-overlay')?.addEventListener('click', closeModal);
+    document.getElementById('close-btn')?.addEventListener('click', closeModal);
   };
   reader.readAsDataURL(blob);
 }
