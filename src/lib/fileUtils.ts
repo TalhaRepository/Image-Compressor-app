@@ -8,16 +8,23 @@ export function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-// Trigger a browser download for a blob.
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+// Trigger a browser download for a blob (Mobile WebView Compatible)
+export async function downloadBlob(blob: Blob, filename: string) {
+  try {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      const a = document.createElement('a');
+      a.href = base64data;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+    reader.readAsDataURL(blob);
+  } catch (e) {
+    console.error('Download failed', e);
+  }
 }
 
 export function uid(): string {
