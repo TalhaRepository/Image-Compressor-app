@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '17'
 
       - name: Install Dependencies & Capacitor
         run: |
@@ -32,11 +32,17 @@ jobs:
       - name: Build Web App
         run: npm run build
 
-      - name: Add Android Platform & Copy
+      - name: Add Android Platform & Patch Compatibility
         run: |
           rm -rf android
           npx cap add android
           npx cap copy
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/kotlinVersion = .*/kotlinVersion = "1.9.22"/g' android/variables.gradle
+          fi
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/app/build.gradle
+          fi
 
       - name: Inject AdMob Meta & Permissions
         run: |
