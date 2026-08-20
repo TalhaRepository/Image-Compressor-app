@@ -72,7 +72,7 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
-                                      }
+                                     }
     
 
 // Web Share API with file fallback. Returns true if shared, false if downloaded.
