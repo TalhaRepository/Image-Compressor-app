@@ -1,3 +1,6 @@
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
+
 // Read a File as a data URL (for in-browser image processing).
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -8,21 +11,28 @@ export function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-// Trigger a browser download for a blob (Mobile WebView Compatible)
 export async function downloadBlob(blob: Blob, filename: string) {
-  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
-
-  // 1. Android WebView / Capacitor Ke Liye (Native Share & Save)
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  // 1. Mobile Android App Native Download Logic
+  if (Capacitor.isNativePlatform()) {
     try {
-      await navigator.share({
-        files: [file],
-        title: filename,
-      });
-      return;
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        
+        await Filesystem.writeFile({
+          path: filename,
+          data: base64Data,
+          directory: Directory.Documents,
+        });
+
+        alert('Image successfully saved to Documents!');
+      };
     } catch (err) {
-      console.log('Share cancelled or failed', err);
+      console.error('Error saving file natively:', err);
+      alert('Failed to save file');
     }
+    return;
   }
 
   // 2. Standard Web Browser Fallback
@@ -37,7 +47,8 @@ export async function downloadBlob(blob: Blob, filename: string) {
     a.remove();
   };
   reader.readAsDataURL(blob);
-  }
+}
+
     
 
 export function uid(): string {
