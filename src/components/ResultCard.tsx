@@ -1,7 +1,6 @@
 import { CompressionResultItem } from '@/lib/types';
 import { formatBytes } from '@/lib/compress';
 import { Download, Share2, Eye, TrendingDown, Maximize2 } from 'lucide-react';
-import { shareOrDownload } from '@/lib/fileUtils';
 
 interface ResultCardProps {
   item: CompressionResultItem;
@@ -12,11 +11,49 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
   const baseName = item.name.replace(/\.[^.]+$/, '');
   const ext = item.resultBlob.type === 'image/webp' ? 'webp' : 'jpg';
   const downloadFileName = `${baseName}-compressed.${ext}`;
-  const fileUrl = URL.createObjectURL(item.resultBlob);
 
-  const handleShare = async (e: React.MouseEvent) => {
+  // Force Direct Android Download via Octet-Stream Location Assignment
+  const handleForceDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    await shareOrDownload(item.resultBlob, downloadFileName);
+
+    // 1. Try Native Android File Share Sheet First
+    const file = new File([item.resultBlob], downloadFileName, {
+      type: item.resultBlob.type || 'image/jpeg',
+    });
+
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      navigator
+        .share({
+          files: [file],
+          title: downloadFileName,
+        })
+        .catch(() => {
+          // Fallback if share is canceled
+          triggerDirectDownload();
+        });
+      return;
+    }
+
+    triggerDirectDownload();
+  };
+
+  const triggerDirectDownload = () => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        // Change MIME type to binary octet-stream so Android OS forces download
+        const byteStreamUrl = reader.result.replace(
+          /^data:image\/[^;]+/,
+          'data:application/octet-stream'
+        );
+        window.location.href = byteStreamUrl;
+      }
+    };
+    reader.readAsDataURL(item.resultBlob);
   };
 
   return (
@@ -46,23 +83,20 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
             </h3>
             <div className="flex gap-1 flex-shrink-0">
               <button
-                onClick={handleShare}
+                onClick={handleForceDownload}
                 className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors"
                 title="Share / Save"
               >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
 
-              {/* Direct Native Anchor Download Link for Mobile Chrome */}
-              <a
-                href={fileUrl}
-                download={downloadFileName}
-                onClick={(e) => e.stopPropagation()}
-                className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors inline-flex items-center justify-center"
+              <button
+                onClick={handleForceDownload}
+                className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors"
                 title="Download"
               >
                 <Download className="w-3.5 h-3.5" />
-              </a>
+              </button>
 
               <button
                 onClick={(e) => {
@@ -108,5 +142,5 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
       </div>
     </div>
   );
-                          }
-          
+        }
+            
