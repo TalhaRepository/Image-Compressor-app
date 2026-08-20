@@ -12,39 +12,28 @@ export function fileToDataUrl(file: File): Promise<string> {
 }
 
 export async function downloadBlob(blob: Blob, filename: string) {
-  // 1. Mobile Android App Native Download Logic
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        
-        await Filesystem.writeFile({
-          path: filename,
-          data: base64Data,
-          directory: Directory.Documents,
-        });
+  const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
 
-        alert('Image successfully saved to Documents!');
-      };
+  // 1. Android Native Share
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: filename,
+      });
+      return;
     } catch (err) {
-      console.error('Error saving file natively:', err);
-      alert('Failed to save file');
+      console.log('Share cancelled', err);
     }
-    return;
   }
 
-  // 2. Standard Web Browser Fallback
+  // 2. Web Fallback
   const reader = new FileReader();
   reader.onloadend = () => {
-    const base64data = reader.result as string;
     const a = document.createElement('a');
-    a.href = base64data;
+    a.href = reader.result as string;
     a.download = filename;
-    document.body.appendChild(a);
     a.click();
-    a.remove();
   };
   reader.readAsDataURL(blob);
 }
