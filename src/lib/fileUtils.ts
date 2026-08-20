@@ -1,7 +1,4 @@
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Capacitor } from '@capacitor/core';
-
-// Read a File as a data URL (for in-browser image processing).
+// Read a File as a data URL (for in-browser preview)
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -9,8 +6,9 @@ export function fileToDataUrl(file: File): Promise<string> {
     r.onerror = () => reject(new Error('Failed to read file'));
     r.readAsDataURL(file);
   });
+}
 
-  export async function downloadBlob(blob: Blob, filename: string): Promise<string> {
+export async function downloadBlob(blob: Blob, filename: string): Promise<string> {
   return shareOrDownload(blob, filename);
 }
 
@@ -72,25 +70,4 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
-    }
-      
-    
-
-// Web Share API with file fallback. Returns true if shared, false if downloaded.
-export async function shareOrDownload(blob: Blob, filename: string, title = 'Compressed image'): Promise<'shared' | 'downloaded' | 'failed'> {
-  try {
-    const file = new File([blob], filename, { type: blob.type });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title });
-      return 'shared';
-    }
-  } catch (e) {
-    // user cancelled or share failed — fall through to download
-  }
-  try {
-    downloadBlob(blob, filename);
-    return 'downloaded';
-  } catch {
-    return 'failed';
-  }
 }
