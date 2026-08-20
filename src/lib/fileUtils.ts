@@ -59,3 +59,29 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
 export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
 }
+
+export async function downloadImageToDevice(dataUrl: string, fileName: string) {
+  try {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'Save Image',
+      });
+      return;
+    }
+  } catch (err) {
+    // User cancelled
+  }
+
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  }
+  
