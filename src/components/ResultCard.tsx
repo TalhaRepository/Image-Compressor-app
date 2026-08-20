@@ -9,18 +9,14 @@ interface ResultCardProps {
 }
 
 export function ResultCard({ item, onPreview }: ResultCardProps) {
+  const baseName = item.name.replace(/\.[^.]+$/, '');
+  const ext = item.resultBlob.type === 'image/webp' ? 'webp' : 'jpg';
+  const downloadFileName = `${baseName}-compressed.${ext}`;
+  const fileUrl = URL.createObjectURL(item.resultBlob);
+
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const base = item.name.replace(/\.[^.]+$/, '');
-    const ext = item.resultBlob.type === 'image/webp' ? 'webp' : 'jpg';
-    await shareOrDownload(item.resultBlob, `${base}-compressed.${ext}`);
-  };
-
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const base = item.name.replace(/\.[^.]+$/, '');
-    const ext = item.resultBlob.type === 'image/webp' ? 'webp' : 'jpg';
-    await shareOrDownload(item.resultBlob, `${base}-compressed.${ext}`);
+    await shareOrDownload(item.resultBlob, downloadFileName);
   };
 
   return (
@@ -36,22 +32,46 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
         <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-black/30 border border-cyan-accent/30">
           <img src={item.resultUrl} alt={item.name} className="w-full h-full object-cover" />
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1">
-            <span className="text-[9px] font-bold text-cyan-accent uppercase tracking-wide">{Math.round(item.qualityUsed * 100)}% Q</span>
+            <span className="text-[9px] font-bold text-cyan-accent uppercase tracking-wide">
+              {Math.round(item.qualityUsed * 100)}% Q
+            </span>
           </div>
         </div>
 
         {/* Details */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="text-sm font-bold text-white truncate" title={item.name}>{item.name}</h3>
+            <h3 className="text-sm font-bold text-white truncate" title={item.name}>
+              {item.name}
+            </h3>
             <div className="flex gap-1 flex-shrink-0">
-              <button onClick={handleShare} className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors" title="Share / Save">
+              <button
+                onClick={handleShare}
+                className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors"
+                title="Share / Save"
+              >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
-              <button onClick={handleDownload} className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors" title="Download">
+
+              {/* Direct Native Anchor Download Link for Mobile Chrome */}
+              <a
+                href={fileUrl}
+                download={downloadFileName}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors inline-flex items-center justify-center"
+                title="Download"
+              >
                 <Download className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onPreview(item); }} className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors" title="Preview">
+              </a>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPreview(item);
+                }}
+                className="p-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-600 text-cyan-accent transition-colors"
+                title="Preview"
+              >
                 <Eye className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -88,4 +108,5 @@ export function ResultCard({ item, onPreview }: ResultCardProps) {
       </div>
     </div>
   );
-}
+                          }
+          
