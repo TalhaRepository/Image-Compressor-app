@@ -194,7 +194,7 @@ export async function compressToTarget(
     bestQ = 0.05; bestW = 64; bestH = 64;
   }
 
-  const url = URL.createObjectURL(bestBlob);
+  const url = await blobToDataUrl(bestBlob);
   return {
     blob: bestBlob,
     url,
@@ -222,7 +222,7 @@ export async function compressManual(
   const cv = getCanvas(w, h);
   drawToCanvas(img, cv, w, h, opts.crop);
   const blob = await canvasToBlob(cv, opts.format, opts.quality);
-  const url = URL.createObjectURL(blob);
+  const url = await blobToDataUrl(blob);
   return {
     blob,
     url,
