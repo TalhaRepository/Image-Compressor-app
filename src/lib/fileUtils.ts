@@ -18,15 +18,33 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+// Helper to convert Data URL to Blob safely without fetch()
+function dataUrlToBlob(dataUrl: string): Blob {
+  try {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1] || arr[0]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch {
+    return new Blob([], { type: 'image/jpeg' });
+  }
+}
+
 // Direct Download Logic
 export async function downloadBlob(blob: Blob, filename: string): Promise<string> {
-  const dataUrl = await blobToDataUrl(blob);
+  const blobUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = dataUrl;
+  link.href = blobUrl;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
   return 'downloaded';
 }
 
@@ -34,7 +52,6 @@ export async function downloadBlob(blob: Blob, filename: string): Promise<string
 export async function shareOrDownload(blob: Blob, filename: string): Promise<string> {
   const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
 
-  // 1. Native Mobile Share Sheet (Android / Chrome par 100% chalega)
   if (
     typeof navigator !== 'undefined' &&
     navigator.share &&
@@ -48,11 +65,10 @@ export async function shareOrDownload(blob: Blob, filename: string): Promise<str
       });
       return 'shared';
     } catch {
-      // Fallback to download if share is dismissed
+      // User cancelled
     }
   }
 
-  // 2. Fallback to Direct Base64 Download
   return downloadBlob(blob, filename);
 }
 
@@ -60,28 +76,42 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 11);
 }
 
-export async function downloadImageToDevice(dataUrl: string, fileName: string) {
+// Android WebView & Browser Save/Download Handler
+export async function downloadImageToDevice(input: string | Blob, fileName: string) {
   try {
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    let blob: Blob;
+
+    if (input instanceof Blob) {
+      blob = input;
+    } else if (typeof input === 'string' && input.startsWith('data:')) {
+      blob = dataUrlToBlob(input);
+    } else if (typeof input === 'string') {
+      const res = await fetch(input);
+      blob = await res.blob();
+    } else {
+      return;
+    }
+
     const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // 1. Android Native Share Sheet (Save to Photos / Files / Drive)
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
       await navigator.share({
         files: [file],
-        title: 'Save Image',
+        title: fileName,
       });
       return;
     }
-  } catch (err) {
-    // User cancelled
-  }
 
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    // 2. Direct Blob Download Fallback
+    await downloadBlob(blob, fileName);
+  } catch (err) {
+    console.error('Download failed:', err);
   }
-  
+  }
+               
